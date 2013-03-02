@@ -4,9 +4,6 @@ import ctypes
 
 from Crypto import Random
 
-from key_handler import PassphraseKeyHandler
-from option import Option
-
 
 SSL = ctypes.cdll.LoadLibrary('libssl.so')
 
@@ -26,23 +23,19 @@ def pbkdf2_hmac_sha512(key, salt, iterations, keylen):
     return result.raw
 
 
-class Pbkdf2KeyHandler(PassphraseKeyHandler):
+class Pbkdf2KeyHandler(object):
     name = 'pbkdf2'
-    options = [
-        Option('iterations',
-               'at least 10,000',
-               check='\\d+',
-               converter=int),
-    ]
+    iterations = 20000
+    
+    def __init__(self):
+        super(Pbkdf2KeyHandler, self).__init__()
+        self.key = None
+        self.salt = None
 
-    salt = None
-    iterations = None
-
-    def make_key(self, key_len, options):
+    def make_key(self, passphrase, key_len):
         self.salt = Random.new().read(64)
-        self.iterations = options['iterations']
         self.key = pbkdf2_hmac_sha512(
-            self.passphrase,
+            passphrase,
             self.salt,
             self.iterations,
             key_len,
@@ -52,16 +45,14 @@ class Pbkdf2KeyHandler(PassphraseKeyHandler):
         return {
             'salt': b64encode(self.salt),
             'iterations': self.iterations,
-            'hash': hashlib.sha512(self.key).hexdigest(),
         }
 
-    def load(self, key_len, data):
+    def load(self, key_len, passphrase, data):
         self.salt = b64decode(data['salt'])
         self.iterations = data['iterations']
         self.key = pbkdf2_hmac_sha512(
-            self.passphrase,
+            passphrase,
             self.salt,
             self.iterations,
             key_len,
         )
-        return hashlib.sha512(self.key).hexdigest() == data['hash']
