@@ -26,6 +26,7 @@ class Store(object):
         self.stages = []
         self.passphrase = None
         self.entries = {}
+        self.modified = False
 
     def load(self, filename):
         with open(filename, 'r') as stream:
@@ -71,6 +72,8 @@ class Store(object):
         key_handler.make_key(self.passphrase, Blowfish.key_size[-1])
         self.stages.append(Stage('blowfish', Blowfish, key_handler))
 
+        self.modified = True
+
     def save(self, filename):
         plaintext = json.dumps(self.entries)
         plaintext = 'check:%i:%s:%s' % (
@@ -92,6 +95,8 @@ class Store(object):
         with open(filename, 'w') as stream:
             stream.write(contents + '\n')
 
+        self.modified = False
+
     def change_passphrase(self):
         current = self.get_passphrase(prompt="Current passphrase: ")
         if current != self.passphrase:
@@ -107,6 +112,8 @@ class Store(object):
                     self.passphrase,
                     stage.cipher.key_size[-1],
                 )
+
+        self.modified = True
 
     def get_passphrase(self, prompt=None, confirm=False, allow_blank=False):
         while True:

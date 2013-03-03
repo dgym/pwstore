@@ -43,10 +43,12 @@ class CLI(object):
                 break
             value += line
         self.store.entries[label] = value.strip()
+        self.store.modified = True
 
     def cmd_remove(self, label):
         try:
             del self.store.entries[label]
+            self.store.modified = True
         except KeyError:
             print 'ERROR: label not found'
 
@@ -82,7 +84,7 @@ class CLI(object):
 
         while True:
             try:
-                command = raw_input('> ')
+                command = raw_input('*> ' if self.store.modified else '> ')
             except EOFError:
                 print
                 break
