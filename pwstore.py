@@ -90,7 +90,12 @@ class CLI(object):
 
 
 def main():
+    # Set up readline to tab complete.
     readline.parse_and_bind('tab: complete')
+    # Remove '-' from the word delimiters.
+    delims = readline.get_completer_delims()
+    readline.set_completer_delims(delims.replace('-', ''))
+
     cli = CLI(sys.argv[1])
     cli.run()
 
