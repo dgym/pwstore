@@ -21,6 +21,7 @@ class CLI(object):
             'set' : (self.cmd_set, 's:'),
             'rm' : (self.cmd_remove, 'r:'),
             'save' : (self.cmd_save, ' '),
+            'change_passphrase': (self.cmd_change_passphrase, ' '),
         }
 
 
@@ -51,6 +52,9 @@ class CLI(object):
 
     def cmd_save(self):
         self.store.save(self.filename)
+
+    def cmd_change_passphrase(self):
+        self.store.change_passphrase()
 
     def completer(self, text, state):
         parts = readline.get_line_buffer().split(' ')
