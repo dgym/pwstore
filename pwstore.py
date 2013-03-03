@@ -1,6 +1,7 @@
 import sys
 import os
 import readline
+from getpass import getpass
 
 from store import Store
 
@@ -11,9 +12,11 @@ class CLI(object):
         self.store = Store()
 
         if os.path.exists(filename):
-            self.store.load(filename)
+            self.passphrase = self.get_passphrase()
+            self.store.load(self.passphrase, filename)
         else:
-            self.store.create()
+            self.passphrase = self.get_passphrase(confirm=True)
+            self.store.create(self.passphrase)
 
         self.commands = {
             'ls' : (self.cmd_list, 'l'),
@@ -56,7 +59,16 @@ class CLI(object):
         self.store.save(self.filename)
 
     def cmd_change_passphrase(self):
-        self.store.change_passphrase()
+        current = self.get_passphrase(prompt="Current passphrase: ")
+        if current != self.passphrase:
+            print 'Incorrect, passphrase not changed.'
+            return
+        new_passphrase = self.get_passphrase(confirm=True, allow_blank=True)
+        if not new_passphrase:
+            print 'Passphrase not changed.'
+        else:
+            self.passphrase = new_passphrase
+            self.store.change_passphrase(new_passphrase)
 
     def completer(self, text, state):
         parts = readline.get_line_buffer().split(' ')
@@ -78,6 +90,23 @@ class CLI(object):
                     matches += 1
                     if matches > state:
                         return label
+
+    def get_passphrase(self, prompt=None, confirm=False, allow_blank=False):
+        while True:
+            passphrase = getpass(prompt or "Passphrase: ")
+            if not passphrase:
+                if allow_blank:
+                    return
+                continue
+
+            if confirm:
+                again = getpass("Confirm passphrase: ")
+                if passphrase != again:
+                    print 'Passphrases did not match, please try again.'
+                    continue
+
+            break
+        return passphrase
 
     def run(self):
         readline.set_completer(self.completer)

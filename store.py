@@ -1,7 +1,6 @@
 import re
 import json
 from base64 import b64encode, b64decode
-from getpass import getpass
 from hashlib import sha512
 from collections import OrderedDict
 
@@ -24,16 +23,14 @@ KEY_HANDLERS = {
 class Store(object):
     def __init__(self):
         self.stages = []
-        self.passphrase = None
         self.entries = {}
         self.modified = False
 
-    def load(self, filename):
+    def load(self, passphrase, filename):
         with open(filename, 'r') as stream:
             contents = stream.read()
         contents = json.loads(contents)
 
-        self.passphrase = self.get_passphrase()
         self.stages = []
         for parameters in contents['stages']:
             cipher_name = parameters['cipher']
@@ -41,7 +38,7 @@ class Store(object):
             key_handler = KEY_HANDLERS[parameters['key_handler']]()
             key_handler.load(
                 cipher.key_size[-1],
-                self.passphrase,
+                passphrase,
                 parameters['key_data'],
             )
             self.stages.append(Stage(cipher_name, cipher, key_handler))
@@ -60,16 +57,15 @@ class Store(object):
             raise ValueError('Bad passphrase used, decrypt failed')
         self.entries = json.loads(plaintext)
 
-    def create(self):
+    def create(self, passphrase):
         self.stages = []
-        self.passphrase = self.get_passphrase(confirm=True)
 
         key_handler = Pbkdf2KeyHandler()
-        key_handler.make_key(self.passphrase, AES.key_size[-1])
+        key_handler.make_key(passphrase, AES.key_size[-1])
         self.stages.append(Stage('aes', AES, key_handler))
 
         key_handler = Pbkdf2KeyHandler()
-        key_handler.make_key(self.passphrase, Blowfish.key_size[-1])
+        key_handler.make_key(passphrase, Blowfish.key_size[-1])
         self.stages.append(Stage('blowfish', Blowfish, key_handler))
 
         self.modified = True
@@ -97,37 +93,11 @@ class Store(object):
 
         self.modified = False
 
-    def change_passphrase(self):
-        current = self.get_passphrase(prompt="Current passphrase: ")
-        if current != self.passphrase:
-            print 'Incorrect, passphrase not changed.'
-            return
-        new_passphrase = self.get_passphrase(confirm=True, allow_blank=True)
-        if not new_passphrase:
-            print 'Passphrase not changed.'
-        else:
-            self.passphrase = new_passphrase
-            for stage in self.stages:
-                stage.key_handler.make_key(
-                    self.passphrase,
-                    stage.cipher.key_size[-1],
-                )
+    def change_passphrase(self, passphrase):
+        for stage in self.stages:
+            stage.key_handler.make_key(
+                passphrase,
+                stage.cipher.key_size[-1],
+            )
 
         self.modified = True
-
-    def get_passphrase(self, prompt=None, confirm=False, allow_blank=False):
-        while True:
-            passphrase = getpass(prompt or "Passphrase: ")
-            if not passphrase:
-                if allow_blank:
-                    return
-                continue
-
-            if confirm:
-                again = getpass("Confirm passphrase: ")
-                if passphrase != again:
-                    print 'Passphrases did not match, please try again.'
-                    continue
-
-            break
-        return passphrase
