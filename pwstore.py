@@ -46,7 +46,7 @@ class CLI(object):
 
     def cmd_remove(self, label):
         try:
-            del self.store[label]
+            del self.store.entries[label]
         except KeyError:
             print 'ERROR: label not found'
 
